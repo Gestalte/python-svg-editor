@@ -37,6 +37,11 @@ def OpenCommand():
     svgText = ReadSvgFile(filepath)
     filename = Path(filepath).name
     main.title(f"SVG Editor - {filename}")
+    DisplayImage()
+
+
+def DisplayImage():
+    global svgText
     sourceText.delete("1.0", tkinter.END)
     sourceText.insert(tkinter.END, svgText)
     img = CreateDisplayImage(svgText, 1, 96)
@@ -53,12 +58,40 @@ def SaveCommand():
     svgText = ReadSvgFile(filepath)
     filename = Path(filepath).name
     main.title(f"SVG Editor - {filename}")
-    sourceText.delete("1.0", tkinter.END)
-    sourceText.insert(tkinter.END, svgText)
-    img = CreateDisplayImage(svgText, 1, 96)
-    tkimg = ImageTk.PhotoImage(img)
-    imageLabel.config(image=tkimg)
-    imageLabel.image = tkimg
+    DisplayImage()
+
+
+def SaveAsCommand():
+    global filepath
+    global svgText
+    svgText = sourceText.get("1.0", "end-1c")
+    newFilepath = tkinter.filedialog.asksaveasfilename(
+        title="Save As",
+        defaultextension=".svg",
+        filetypes=[("SVG files", "*.svg"), ("All files", "*.*")]
+    )
+    filepath = newFilepath
+    WriteSvgFile(newFilepath, svgText)
+    filename = Path(newFilepath).name
+    main.title(f"SVG Editor - {filename}")
+
+
+def NewCommand():
+    global filepath
+    global svgText
+    svgText = '''<svg height="100" width="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+</svg>
+        '''
+    newFilepath = tkinter.filedialog.asksaveasfilename(
+        title="New SVG",
+        defaultextension=".svg",
+        filetypes=[("SVG files", "*.svg"), ("All files", "*.*")]
+    )
+    filepath = newFilepath
+    WriteSvgFile(newFilepath, svgText)
+    filename = Path(newFilepath).name
+    main.title(f"SVG Editor - {filename}")
+    DisplayImage()
 
 
 def openFile():
@@ -77,8 +110,10 @@ main.grid_columnconfigure(1, weight=1, uniform="equal")
 main.grid_rowconfigure(0, weight=1)
 
 menubar = tkinter.Menu(main)
+menubar.add_command(label="New", command=NewCommand)
 menubar.add_command(label="Open", command=OpenCommand)
 menubar.add_command(label="Save", command=SaveCommand)
+menubar.add_command(label="Save As", command=SaveAsCommand)
 main.config(menu=menubar)
 
 sourceFrame = tkinter.Frame(master=main, bg="orange")
