@@ -102,15 +102,16 @@ def openFile():
     return filepath
 
 
-def savePNG():
+def SavePNGCommand():
     global svgText
-    newFilepath = tkinter.filedialog.asksaveasfilename(
-        title="PNG",
-        defaultextension=".png",
-        filetypes=[("SVG files", "*.png"), ("All files", "*.*")]
-    )
-    img = CreateDisplayImage(svgText, 1, 96)
-    img.save(newFilepath)
+    if svgText != "":
+        newFilepath = tkinter.filedialog.asksaveasfilename(
+            title="PNG",
+            defaultextension=".png",
+            filetypes=[("SVG files", "*.png"), ("All files", "*.*")]
+        )
+        img = CreateDisplayImage(svgText, 1, 96)
+        img.save(newFilepath)
 
 
 main = tkinter.Tk()
@@ -128,9 +129,9 @@ menubar.add_cascade(label="File", menu=filemenu)
 filemenu.add_command(label="New", command=NewCommand)
 filemenu.add_command(label="Open", command=OpenCommand)
 filemenu.add_command(label="Save As", command=SaveAsCommand)
+filemenu.add_command(label="Export to PNG", command=SavePNGCommand)
 filemenu.add_command(label='Exit', command=main.destroy)
 menubar.add_command(label="Save", command=SaveCommand)
-menubar.add_command(label="Create PNG", command=savePNG)
 
 sourceFrame = tkinter.Frame(master=main, bg="orange")
 sourceFrame.grid(row=0, column=0, sticky='nsew')
