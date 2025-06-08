@@ -102,6 +102,17 @@ def openFile():
     return filepath
 
 
+def savePNG():
+    global svgText
+    newFilepath = tkinter.filedialog.asksaveasfilename(
+        title="PNG",
+        defaultextension=".png",
+        filetypes=[("SVG files", "*.png"), ("All files", "*.*")]
+    )
+    img = CreateDisplayImage(svgText, 1, 96)
+    img.save(newFilepath)
+
+
 main = tkinter.Tk()
 main.title("SVG Editor")
 main.geometry("1000x400")
@@ -119,6 +130,7 @@ filemenu.add_command(label="Open", command=OpenCommand)
 filemenu.add_command(label="Save As", command=SaveAsCommand)
 filemenu.add_command(label='Exit', command=main.destroy)
 menubar.add_command(label="Save", command=SaveCommand)
+menubar.add_command(label="Create PNG", command=savePNG)
 
 sourceFrame = tkinter.Frame(master=main, bg="orange")
 sourceFrame.grid(row=0, column=0, sticky='nsew')
