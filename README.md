@@ -4,4 +4,4 @@ Editor for SVG files. SVG image is displayed on the right and its source is disp
 
 ## Screenshot
 
-![screenshot](https://github.com/Gestalte/python-svg-editor/blob/master/screenshot.PNG?raw=true)
+![screenshot](https://github.com/Gestalte/python-svg-editor/blob/Master/screenshot.PNG?raw=true)
