@@ -5,9 +5,29 @@ from PIL import Image, ImageTk
 from io import BytesIO
 from pathlib import Path
 import tkinter.filedialog
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 filepath = ""
 svgText = ""
+
+
+def on_drop(event):
+    """
+    Support for drag-and-drop of files onto the UI.
+    """
+    global svgText
+    global filepath
+    dropPath = event.data
+    print(dropPath)
+    if dropPath[:1] == "{":
+        dropPath = dropPath[1:-1]
+        print(dropPath)
+    if dropPath != '' and dropPath[-4:] == ".svg":
+        filepath = dropPath
+        svgText = ReadSvgFile(filepath)
+        filename = Path(filepath).name
+        main.title(f"SVG Editor - {filename}")
+        DisplayImage(svgText)
 
 
 def WriteSvgFile(filename, text):
@@ -17,7 +37,6 @@ def WriteSvgFile(filename, text):
 
 
 def ReadSvgFile(filename):
-    global svgFile
     svgFile = open(filename, 'r')
     text = svgFile.read()
     svgFile.close()
@@ -48,11 +67,10 @@ def OpenCommand():
     svgText = ReadSvgFile(filepath)
     filename = Path(filepath).name
     main.title(f"SVG Editor - {filename}")
-    DisplayImage()
+    DisplayImage(svgText)
 
 
-def DisplayImage():
-    global svgText
+def DisplayImage(svgText):
     sourceText.delete("1.0", tkinter.END)
     sourceText.insert(tkinter.END, svgText)
     img = CreateDisplayImage(svgText, 1, 96)
@@ -69,7 +87,7 @@ def SaveCommand():
     svgText = ReadSvgFile(filepath)
     filename = Path(filepath).name
     main.title(f"SVG Editor - {filename}")
-    DisplayImage()
+    DisplayImage(svgText)
 
 
 def SaveAsCommand():
@@ -102,7 +120,7 @@ def NewCommand():
     WriteSvgFile(newFilepath, svgText)
     filename = Path(newFilepath).name
     main.title(f"SVG Editor - {filename}")
-    DisplayImage()
+    DisplayImage(svgText)
 
 
 def openFile():
@@ -125,7 +143,8 @@ def SavePNGCommand():
         img.save(newFilepath)
 
 
-main = tkinter.Tk()
+main = TkinterDnD.Tk()
+# main = tkinter.Tk()
 main.title("SVG Editor")
 main.geometry("1000x400")
 main.grid_columnconfigure(0, weight=1, uniform="equal")
@@ -174,6 +193,9 @@ if startingPath != '' and startingPath[-4:] == ".svg":
     setSvgTextGlobal(svgText)
     filename = Path(startingPath).name
     main.title(f"SVG Editor - {filename}")
-    DisplayImage()
+    DisplayImage(svgText)
+
+main.drop_target_register(DND_FILES)
+main.dnd_bind("<<Drop>>", on_drop)
 
 main.mainloop()
