@@ -1,3 +1,4 @@
+import sys
 import tkinter
 import cairosvg
 from PIL import Image, ImageTk
@@ -28,6 +29,16 @@ def CreateDisplayImage(svgText, scale, dpi):
     bytes = cairosvg.svg2png(svg)
     img = Image.open(BytesIO(bytes))
     return img
+
+
+def setFilePathGlobal(path):
+    global filepath
+    filepath = path
+
+
+def setSvgTextGlobal(text):
+    global svgText
+    svgText = text
 
 
 def OpenCommand():
@@ -154,5 +165,15 @@ imageFrame = tkinter.Frame(master=main, bg="pink")
 imageFrame.grid(row=0, column=1, sticky='nsew')
 imageLabel = tkinter.Label(imageFrame)  # , image=tkimg)
 imageLabel.pack(fill=tkinter.BOTH, expand=True)
+
+startingPath = sys.argv[1] if len(sys.argv) >= 2 else ''
+
+if startingPath != '' and startingPath[-4:] == ".svg":
+    setFilePathGlobal(startingPath)
+    svgText = ReadSvgFile(startingPath)
+    setSvgTextGlobal(svgText)
+    filename = Path(startingPath).name
+    main.title(f"SVG Editor - {filename}")
+    DisplayImage()
 
 main.mainloop()
