@@ -143,6 +143,27 @@ def SavePNGCommand():
         img.save(newFilepath)
 
 
+def SaveICOCommand():
+    global svgText
+    if svgText != "":
+        newFilepath = tkinter.filedialog.asksaveasfilename(
+            title="ICO",
+            defaultextension=".ico",
+            filetypes=[("SVG files", "*.ico"), ("All files", "*.*")]
+        )
+        img = CreateDisplayImage(svgText, 1, 96)
+        img.save(newFilepath,
+                 format='ICO',
+                 sizes=[
+                    (32, 32),
+                    (48, 48),
+                    (64, 64),
+                    (128, 128),
+                    (256, 256),
+                    (512, 512)
+                 ])
+
+
 main = TkinterDnD.Tk()
 # main = tkinter.Tk()
 main.title("SVG Editor")
@@ -154,12 +175,17 @@ main.grid_rowconfigure(0, weight=1)
 menubar = tkinter.Menu(main)
 main.config(menu=menubar)
 filemenu = tkinter.Menu(menubar, tearoff=False)
+exportMenu = tkinter.Menu(filemenu, tearoff=False)
 
 menubar.add_cascade(label="File", menu=filemenu)
 filemenu.add_command(label="New", command=NewCommand)
 filemenu.add_command(label="Open", command=OpenCommand)
 filemenu.add_command(label="Save As", command=SaveAsCommand)
-filemenu.add_command(label="Export to PNG", command=SavePNGCommand)
+
+filemenu.add_cascade(label="Export", menu=exportMenu)
+
+exportMenu.add_command(label="Export to PNG", command=SavePNGCommand)
+exportMenu.add_command(label="Export to ICO", command=SaveICOCommand)
 filemenu.add_command(label='Exit', command=main.destroy)
 menubar.add_command(label="Save", command=SaveCommand)
 
