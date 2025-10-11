@@ -6,9 +6,18 @@ from io import BytesIO
 from pathlib import Path
 import tkinter.filedialog
 from tkinterdnd2 import DND_FILES, TkinterDnD
+import duckdb
 
 filepath = ""
 svgText = ""
+
+
+# TODO: How do I load the database and duckdb extension into .exe with pyinstaller?
+def testAutoComplete():
+    con = duckdb.connect("auto_complete.duckdb")
+    con.load_extension("marisa.duckdb_extension")
+    lst = con.sql("select marisa_predictive(trie, '<a',10) from keywords_trie;")
+    print(lst)
 
 
 def on_drop(event):
@@ -223,5 +232,7 @@ if startingPath != '' and startingPath[-4:] == ".svg":
 
 main.drop_target_register(DND_FILES)
 main.dnd_bind("<<Drop>>", on_drop)
+
+testAutoComplete()
 
 main.mainloop()
