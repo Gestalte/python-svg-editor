@@ -12,6 +12,17 @@ filepath = ""
 svgText = ""
 
 
+def UpdateCursorPosition(event):
+    position = sourceText.index("insert")  # Get the cursor position
+    print(position)
+    # s = position.split('.')[0]
+    x = sourceText.get(1.0, position)
+    print(x)
+    # TODO: Get the current line's text
+    # TODO: work backwards from the cursor position to the first space or the beginning of the line.
+    # TODO: Capture as string and use to query db.
+
+
 # TODO: How do I load the database and duckdb extension into .exe with pyinstaller?
 def testAutoComplete():
     con = duckdb.connect("auto_complete.duckdb")
@@ -214,6 +225,8 @@ hScrollbar.config(command=sourceText.yview)
 vScrollbar.config(command=sourceText.xview)
 sourceText.pack(fill=tkinter.BOTH, expand=True)
 sourceText.insert(tkinter.END, svgText)
+
+sourceText.bind("<KeyRelease>", UpdateCursorPosition)
 
 imageFrame = tkinter.Frame(master=main, bg="pink")
 imageFrame.grid(row=0, column=1, sticky='nsew')
