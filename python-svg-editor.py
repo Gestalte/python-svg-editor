@@ -1,5 +1,6 @@
 import sys
 import tkinter
+from tkinter import font
 import cairosvg
 from PIL import Image, ImageTk
 from io import BytesIO
@@ -10,25 +11,37 @@ import duckdb
 
 filepath = ""
 svgText = ""
+fontSize = 12
 
 
 def UpdateCursorPosition(event):
     position = sourceText.index("insert")  # Get the cursor position
-    print(position)
-    # s = position.split('.')[0]
-    x = sourceText.get(1.0, position)
-    print(x)
-    # TODO: Get the current line's text
-    # TODO: work backwards from the cursor position to the first space or the beginning of the line.
-    # TODO: Capture as string and use to query db.
+    lineStart = float(position.split('.')[0])
+    lineUpToPosition = sourceText.get(lineStart, position)
+    currentSequence = lineUpToPosition.rpartition(' ')[2]
+    global listbox
+    listbox.destroy()
+    if currentSequence != " " and currentSequence != "":
+        con = duckdb.connect("auto_complete.duckdb")
+        con.load_extension("marisa.duckdb_extension")
+        lst = con.sql("select marisa_predictive(trie, '" + currentSequence + "', 10) from keywords_trie;").fetchall()
+        print(lst)
+        autoCompleteItems = lst[0][0]
+        if len(autoCompleteItems) != 0:
+            listbox = tkinter.Listbox(main, height=len(autoCompleteItems), width=30)
+            pos = lineStart * (fontSize+6)
+            listbox.place(x=10, y=pos)
+            count = 0
+            for item in autoCompleteItems:
+                count = count + 1
+                listbox.insert(count, item)
+            #listbox.select_set(0)
 
 
-# TODO: How do I load the database and duckdb extension into .exe with pyinstaller?
-def testAutoComplete():
-    con = duckdb.connect("auto_complete.duckdb")
-    con.load_extension("marisa.duckdb_extension")
-    lst = con.sql("select marisa_predictive(trie, '<a',10) from keywords_trie;")
-    print(lst)
+# TODO: Handle enter when listbox item is selected
+# TODO: Handle click on listbox item
+# TODO: Figure out how to style auto-complete box.
+# TODO: Figure out how to draw the auto-complete box when you are near the bottom of the source code.
 
 
 def on_drop(event):
@@ -216,11 +229,13 @@ vScrollbar = tkinter.Scrollbar(sourceFrame, orient="horizontal")
 vScrollbar.pack(side=tkinter.BOTTOM, fill=tkinter.X)
 hScrollbar = tkinter.Scrollbar(sourceFrame)
 hScrollbar.pack(side=tkinter.RIGHT, fill=tkinter.Y)
+sourceTextFont = font.Font(size=fontSize)
 sourceText = tkinter.Text(
     sourceFrame,
     yscrollcommand=hScrollbar.set,
     xscrollcommand=vScrollbar.set,
-    wrap="none")
+    wrap="none",
+    font=sourceTextFont)
 hScrollbar.config(command=sourceText.yview)
 vScrollbar.config(command=sourceText.xview)
 sourceText.pack(fill=tkinter.BOTH, expand=True)
@@ -246,6 +261,7 @@ if startingPath != '' and startingPath[-4:] == ".svg":
 main.drop_target_register(DND_FILES)
 main.dnd_bind("<<Drop>>", on_drop)
 
-testAutoComplete()
+# This only exists to be destroyed so that there is only one auto-complete listbox at a time.
+listbox = tkinter.Listbox(main)
 
 main.mainloop()
