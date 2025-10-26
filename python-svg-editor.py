@@ -8,20 +8,44 @@ from pathlib import Path
 import tkinter.filedialog
 from tkinterdnd2 import DND_FILES, TkinterDnD
 import duckdb
+import math
 
 filepath = ""
 svgText = ""
 fontSize = 12
+lastCursorPosition = 1.0
+autoCompleteSelectionIndex = -1
+autoCompleteItemsG = []
 
 
 def UpdateCursorPosition(event):
-    position = sourceText.index("insert")  # Get the cursor position
-    lineStart = float(position.split('.')[0])
-    lineUpToPosition = sourceText.get(lineStart, position)
-    currentSequence = lineUpToPosition.rpartition(' ')[2]
+    global lastCursorPosition
     global listbox
+    global autoCompleteItemsG
+    print(event.keysym)
+    downPressed = False
+    upPressed = False
+    rightPressed = False
+    if len(autoCompleteItemsG) > 0:
+        if event.keysym == "Down":
+            downPressed = True
+            sourceText.mark_set("insert", lastCursorPosition)
+        if event.keysym == "Up":
+            upPressed = True
+            sourceText.mark_set("insert", lastCursorPosition)
+        if event.keysym == "Right" or event.keysym == "Return":
+            rightPressed = True
+            sourceText.mark_set("insert", lastCursorPosition)
+    cursorPosition = sourceText.index("insert")
+    print("cursorPosition", cursorPosition)
+    print("lastCursorPosition", lastCursorPosition)
+    lineStart = float(cursorPosition.split('.')[0])
+    lineUpToPosition = sourceText.get(lineStart, cursorPosition)
+    currentSequence = lineUpToPosition.rpartition(' ')[2]
+    print("currentSequence", currentSequence)
     listbox.destroy()
     if currentSequence != " " and currentSequence != "":
+        # TODO: Try to keep the connection open while the program is open.
         con = duckdb.connect("auto_complete.duckdb")
         con.load_extension("marisa.duckdb_extension")
         lst = con.sql("select marisa_predictive(trie, '" + currentSequence + "', 10) from keywords_trie;").fetchall()
@@ -32,16 +56,49 @@ def UpdateCursorPosition(event):
             pos = lineStart * (fontSize+6)
             listbox.place(x=10, y=pos)
             count = 0
+            autoCompleteItemsG = []
             for item in autoCompleteItems:
                 count = count + 1
                 listbox.insert(count, item)
-            #listbox.select_set(0)
+                autoCompleteItemsG.append(item)
+            global autoCompleteSelectionIndex
+            if downPressed:
+                autoCompleteSelectionIndex = autoCompleteSelectionIndex + 1
+                listbox.selection_set(autoCompleteSelectionIndex)
+            if upPressed:
+                autoCompleteSelectionIndex = autoCompleteSelectionIndex - 1
+                if autoCompleteSelectionIndex == -1:
+                    autoCompleteSelectionIndex = 0
+                listbox.selection_set(autoCompleteSelectionIndex)
+            if rightPressed:
+                if autoCompleteSelectionIndex != -1:
+                    selectionText = listbox.get(autoCompleteSelectionIndex)
+                    print("selectionText",selectionText)
+                    lineNumber = float(cursorPosition.split('.')[0])
+                    lineColumn = float(cursorPosition.split('.')[1])
+                    sequenceLength = float(len(currentSequence))
+                    linePosition = lineColumn - sequenceLength
+                    linePositionDecimal = 0.0
+                    if linePosition <= 0.0:
+                        linePositionDecimal = 0.0
+                    else:
+                        # Gets the length of linePosition
+                        linePositionLength = math.ceil(math.log10(linePosition))
+                        # put linePosition behind the '.' ie 17.0 => 0.17
+                        linePositionDecimal = linePosition / math.pow(10,linePositionLength)
+                    insertStart = lineNumber + linePositionDecimal
+                    sourceText.delete(insertStart, cursorPosition)
+                    sourceText.insert(insertStart, selectionText)
+                    cursorPosition = sourceText.index("insert")
+                    autoCompleteSelectionIndex = -1
+                    autoCompleteItemsG = []
+    lastCursorPosition = cursorPosition
 
 
-# TODO: Handle enter when listbox item is selected
 # TODO: Handle click on listbox item
-# TODO: Figure out how to style auto-complete box.
 # TODO: Figure out how to draw the auto-complete box when you are near the bottom of the source code.
+# TODO: Add colors to trie
+# TODO: Add /> and ="" to trie
 
 
 def on_drop(event):
@@ -261,7 +318,8 @@ if startingPath != '' and startingPath[-4:] == ".svg":
 main.drop_target_register(DND_FILES)
 main.dnd_bind("<<Drop>>", on_drop)
 
-# This only exists to be destroyed so that there is only one auto-complete listbox at a time.
+# This only exists to be destroyed so that there is only one auto-complete
+# listbox at a time.
 listbox = tkinter.Listbox(main)
 
 main.mainloop()
