@@ -64,6 +64,9 @@ def UpdateCursorPosition(event):
             global autoCompleteSelectionIndex
             if downPressed:
                 autoCompleteSelectionIndex = autoCompleteSelectionIndex + 1
+                itemCount = len(autoCompleteItemsG)
+                if itemCount <= autoCompleteSelectionIndex:
+                    autoCompleteSelectionIndex = itemCount - 1
                 listbox.selection_set(autoCompleteSelectionIndex)
             if upPressed:
                 autoCompleteSelectionIndex = autoCompleteSelectionIndex - 1
@@ -92,6 +95,7 @@ def UpdateCursorPosition(event):
                     cursorPosition = sourceText.index("insert")
                     autoCompleteSelectionIndex = -1
                     autoCompleteItemsG = []
+                    listbox.destroy()
     lastCursorPosition = cursorPosition
 
 
