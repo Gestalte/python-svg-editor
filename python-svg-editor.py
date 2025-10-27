@@ -16,18 +16,13 @@ fontSize = 12
 lastCursorPosition = 1.0
 autoCompleteSelectionIndex = -1
 autoCompleteItemsG = []
+autoCompleteBoxOpen = False
 
 
 def MakePosition(line, column):
     line = int(line)
     column = int(column)
-    dotColumn = 0.0
-    if column > 0:
-        # Gets the length of column
-        columnLength = math.ceil(math.log10(column))
-        # put column behind the '.' ie 17.0 => 0.17
-        dotColumn = column / math.pow(10, columnLength)
-    return line + dotColumn
+    return str(line) + '.' + str(column)
 
 
 def GetLineAndColumn(position):
@@ -36,19 +31,37 @@ def GetLineAndColumn(position):
     return dict(line=ln, column=col)
 
 
-def UpdateCursorPosition(event):
+def AutoCompleteInteraction(event):
     global lastCursorPosition
     global listbox
-    global autoCompleteItemsG
-    print(event.keysym)
-    downPressed = False
-    upPressed = False
-    rightPressed = False
+    global autoCompleteBoxOpen
+    global autoCompleteSelectionIndex
+
+    print("============================================================")
+    print("event.keysym",event.keysym)
+    print("autoCompleteBoxOpen", autoCompleteBoxOpen)
+    print("autoCompleteSelectionIndex before", autoCompleteSelectionIndex)
+
+    listbox.destroy()
+
+    if autoCompleteBoxOpen and event.keysym in ["Down", "Up", "Right", "Return", "Tab"]:
+        print("reset cursor")
+        sourceText.mark_set("insert", lastCursorPosition)
+
     cursorPosition = sourceText.index("insert")
+    lineStart = float(cursorPosition.split('.')[0])
+    lineUpToPosition = sourceText.get(lineStart, cursorPosition)
+    currentSequence = lineUpToPosition.rpartition(' ')[2]
+    autoCompleteItems = []
+
+    print("cursorPosition", cursorPosition)
+    print("lastCursorPosition", lastCursorPosition)
+    print("currentSequence", currentSequence)
+
     if event.keysym == "slash":
         sourceText.insert(cursorPosition, ">")
         cursorPosition = sourceText.index("insert")
-    # TODO: Multi-line Tab
+
     if event.keysym == "Tab":
         # Tab gets counted as one char.
         cursor = GetLineAndColumn(cursorPosition)
@@ -57,23 +70,7 @@ def UpdateCursorPosition(event):
         sourceText.delete(oldPosition, cursorPosition)
         sourceText.insert(cursorPosition, "    ")  # 4 spaces
         cursorPosition = sourceText.index("insert")
-    if len(autoCompleteItemsG) > 0:
-        if event.keysym == "Down":
-            downPressed = True
-            sourceText.mark_set("insert", lastCursorPosition)
-        if event.keysym == "Up":
-            upPressed = True
-            sourceText.mark_set("insert", lastCursorPosition)
-        if event.keysym == "Right" or event.keysym == "Return":
-            rightPressed = True
-            sourceText.mark_set("insert", lastCursorPosition)
-    print("cursorPosition", cursorPosition)
-    print("lastCursorPosition", lastCursorPosition)
-    lineStart = float(cursorPosition.split('.')[0])
-    lineUpToPosition = sourceText.get(lineStart, cursorPosition)
-    currentSequence = lineUpToPosition.rpartition(' ')[2]
-    print("currentSequence", currentSequence)
-    listbox.destroy()
+
     if currentSequence != " " and currentSequence != "":
         # TODO: Try to keep the connection open while the program is open.
         con = duckdb.connect("auto_complete.duckdb")
@@ -81,51 +78,60 @@ def UpdateCursorPosition(event):
         lst = con.sql("select marisa_predictive(trie, '" + currentSequence + "', 10) from keywords_trie;").fetchall()
         print(lst)
         autoCompleteItems = lst[0][0]
-        if len(autoCompleteItems) != 0:
-            listbox = tkinter.Listbox(main, height=len(autoCompleteItems), width=30)
-            pos = lineStart * (fontSize+6)
-            listbox.place(x=10, y=pos)
-            count = 0
-            autoCompleteItemsG = []
-            for item in autoCompleteItems:
-                count = count + 1
-                listbox.insert(count, item)
-                autoCompleteItemsG.append(item)
-            global autoCompleteSelectionIndex
-            if downPressed:
-                autoCompleteSelectionIndex = autoCompleteSelectionIndex + 1
-                itemCount = len(autoCompleteItemsG)
-                if itemCount <= autoCompleteSelectionIndex:
-                    autoCompleteSelectionIndex = itemCount - 1
-                listbox.selection_set(autoCompleteSelectionIndex)
-            if upPressed:
-                autoCompleteSelectionIndex = autoCompleteSelectionIndex - 1
-                if autoCompleteSelectionIndex == -1:
-                    autoCompleteSelectionIndex = 0
-                listbox.selection_set(autoCompleteSelectionIndex)
-            if rightPressed:
-                if autoCompleteSelectionIndex != -1:
-                    selectionText = listbox.get(autoCompleteSelectionIndex)
-                    print("selectionText", selectionText)
-                    cursor = GetLineAndColumn(cursorPosition)
-                    sequenceLength = float(len(currentSequence))
-                    linePosition = cursor['column'] - sequenceLength
-                    insertStart = MakePosition(cursor['line'], linePosition)
-                    sourceText.delete(insertStart, cursorPosition)
-                    # append =""
-                    if selectionText[0] != "<":
-                        selectionText = selectionText + '=""'
-                    sourceText.insert(insertStart, selectionText)
-                    # move cursor between quotes => ="|"
-                    if selectionText[0] != "<":
-                        cursor = GetLineAndColumn(sourceText.index("insert"))
-                        newCursorPosition = MakePosition(cursor['line'], (cursor['column']-1))
-                        sourceText.mark_set("insert", newCursorPosition)
-                    cursorPosition = sourceText.index("insert")
-                    autoCompleteSelectionIndex = -1
-                    autoCompleteItemsG = []
-                    listbox.destroy()
-    lastCursorPosition = cursorPosition
+
+    if len(autoCompleteItems) == 0:
+        autoCompleteBoxOpen = False
+    else:
+        autoCompleteBoxOpen = True
+        listbox = tkinter.Listbox(main, height=len(autoCompleteItems), width=30)
+        pos = lineStart * (fontSize+6)
+        listbox.place(x=10, y=pos)
+        count = 0
+        for item in autoCompleteItems:
+            count = count + 1
+            listbox.insert(count, item)
+        listbox.selection_clear(0, (len(autoCompleteItems)-1))
+        listbox.selection_set(autoCompleteSelectionIndex)
+
+        if event.keysym == "Down":
+            autoCompleteSelectionIndex = autoCompleteSelectionIndex + 1
+            itemCount = len(autoCompleteItems)
+            if itemCount <= autoCompleteSelectionIndex:
+                autoCompleteSelectionIndex = itemCount - 1
+            listbox.selection_clear(0, (len(autoCompleteItems)-1))
+            listbox.selection_set(autoCompleteSelectionIndex)
+
+        if event.keysym == "Up":
+            autoCompleteSelectionIndex = autoCompleteSelectionIndex - 1
+            if autoCompleteSelectionIndex < -1:
+                autoCompleteSelectionIndex = -1
+            listbox.selection_clear(0, (len(autoCompleteItems)-1))
+            listbox.selection_set(autoCompleteSelectionIndex)
+
+        if event.keysym == "Right" or event.keysym == "Return":
+            if autoCompleteSelectionIndex > -1:
+                selectionText = listbox.get(autoCompleteSelectionIndex)
+                print("selectionText", selectionText)
+                cursor = GetLineAndColumn(cursorPosition)
+                linePosition = cursor['column'] - float(len(currentSequence))
+                insertStart = MakePosition(cursor['line'], linePosition)
+                sourceText.delete(insertStart, cursorPosition)
+                # append =""
+                if selectionText[0] != "<":
+                    selectionText = selectionText + '=""'
+                sourceText.insert(insertStart, selectionText)
+                # move cursor between quotes => ="|"
+                if selectionText[0] != "<":
+                    cursor = GetLineAndColumn(sourceText.index("insert"))
+                    newCursorPosition = MakePosition(cursor['line'], (cursor['column']-1))
+                    sourceText.mark_set("insert", newCursorPosition)
+                cursorPosition = sourceText.index("insert")
+                listbox.destroy()
+                autoCompleteBoxOpen = False
+                autoCompleteSelectionIndex = -1
+
+        print("autoCompleteSelectionIndex after",autoCompleteSelectionIndex)
+        lastCursorPosition = cursorPosition
 
 
 # TODO: Handle click on listbox item
@@ -331,7 +337,7 @@ vScrollbar.config(command=sourceText.xview)
 sourceText.pack(fill=tkinter.BOTH, expand=True)
 sourceText.insert(tkinter.END, svgText)
 
-sourceText.bind("<KeyRelease>", UpdateCursorPosition)
+sourceText.bind("<KeyRelease>", AutoCompleteInteraction)
 
 imageFrame = tkinter.Frame(master=main, bg="pink")
 imageFrame.grid(row=0, column=1, sticky='nsew')
