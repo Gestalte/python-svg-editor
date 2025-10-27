@@ -18,6 +18,24 @@ autoCompleteSelectionIndex = -1
 autoCompleteItemsG = []
 
 
+def MakePosition(line, column):
+    line = int(line)
+    column = int(column)
+    dotColumn = 0.0
+    if column > 0:
+        # Gets the length of column
+        columnLength = math.ceil(math.log10(column))
+        # put column behind the '.' ie 17.0 => 0.17
+        dotColumn = column / math.pow(10, columnLength)
+    return line + dotColumn
+
+
+def GetLineAndColumn(position):
+    ln = int(position.split('.')[0])
+    col = int(position.split('.')[1])
+    return dict(line=ln, column=col)
+
+
 def UpdateCursorPosition(event):
     global lastCursorPosition
     global listbox
@@ -26,6 +44,19 @@ def UpdateCursorPosition(event):
     downPressed = False
     upPressed = False
     rightPressed = False
+    cursorPosition = sourceText.index("insert")
+    if event.keysym == "slash":
+        sourceText.insert(cursorPosition, ">")
+        cursorPosition = sourceText.index("insert")
+    # TODO: Multi-line Tab
+    if event.keysym == "Tab":
+        # Tab gets counted as one char.
+        cursor = GetLineAndColumn(cursorPosition)
+        cursor['column'] = cursor['column'] - 1
+        oldPosition = MakePosition(cursor['line'], cursor['column'])
+        sourceText.delete(oldPosition, cursorPosition)
+        sourceText.insert(cursorPosition, "    ")  # 4 spaces
+        cursorPosition = sourceText.index("insert")
     if len(autoCompleteItemsG) > 0:
         if event.keysym == "Down":
             downPressed = True
@@ -36,7 +67,6 @@ def UpdateCursorPosition(event):
         if event.keysym == "Right" or event.keysym == "Return":
             rightPressed = True
             sourceText.mark_set("insert", lastCursorPosition)
-    cursorPosition = sourceText.index("insert")
     print("cursorPosition", cursorPosition)
     print("lastCursorPosition", lastCursorPosition)
     lineStart = float(cursorPosition.split('.')[0])
@@ -76,22 +106,21 @@ def UpdateCursorPosition(event):
             if rightPressed:
                 if autoCompleteSelectionIndex != -1:
                     selectionText = listbox.get(autoCompleteSelectionIndex)
-                    print("selectionText",selectionText)
-                    lineNumber = float(cursorPosition.split('.')[0])
-                    lineColumn = float(cursorPosition.split('.')[1])
+                    print("selectionText", selectionText)
+                    cursor = GetLineAndColumn(cursorPosition)
                     sequenceLength = float(len(currentSequence))
-                    linePosition = lineColumn - sequenceLength
-                    linePositionDecimal = 0.0
-                    if linePosition <= 0.0:
-                        linePositionDecimal = 0.0
-                    else:
-                        # Gets the length of linePosition
-                        linePositionLength = math.ceil(math.log10(linePosition))
-                        # put linePosition behind the '.' ie 17.0 => 0.17
-                        linePositionDecimal = linePosition / math.pow(10,linePositionLength)
-                    insertStart = lineNumber + linePositionDecimal
+                    linePosition = cursor['column'] - sequenceLength
+                    insertStart = MakePosition(cursor['line'], linePosition)
                     sourceText.delete(insertStart, cursorPosition)
+                    # append =""
+                    if selectionText[0] != "<":
+                        selectionText = selectionText + '=""'
                     sourceText.insert(insertStart, selectionText)
+                    # move cursor between quotes => ="|"
+                    if selectionText[0] != "<":
+                        cursor = GetLineAndColumn(sourceText.index("insert"))
+                        newCursorPosition = MakePosition(cursor['line'], (cursor['column']-1))
+                        sourceText.mark_set("insert", newCursorPosition)
                     cursorPosition = sourceText.index("insert")
                     autoCompleteSelectionIndex = -1
                     autoCompleteItemsG = []
@@ -102,7 +131,7 @@ def UpdateCursorPosition(event):
 # TODO: Handle click on listbox item
 # TODO: Figure out how to draw the auto-complete box when you are near the bottom of the source code.
 # TODO: Add colors to trie
-# TODO: Add /> and ="" to trie
+# TODO: Handle Ctrl+Z and Ctrl+R
 
 
 def on_drop(event):
